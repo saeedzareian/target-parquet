@@ -169,8 +169,10 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         LOGGER.info("There were not any records retrieved.")
         return state
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
-    for stream_name in records.keys():
+    # records.keys() returns aniterator, turning that into a list allows us to change the size of the dictionary
+    for stream_name in list(records.keys()):
         dataframe = pd.DataFrame(records[stream_name])
+        del records[stream_name] # clear used data for better memory usage
         if streams_in_separate_folder and not os.path.exists(os.path.join(destination_path, stream_name)):
             os.makedirs(os.path.join(destination_path, stream_name))
         filename = stream_name + filename_separator + timestamp + compression_extension + '.parquet'
