@@ -14,6 +14,7 @@ import sys
 import urllib
 import psutil
 import time
+import sys
 import threading
 
 try:
@@ -169,8 +170,8 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         LOGGER.info("There were not any records retrieved.")
         return state
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
-    # records.keys() returns aniterator, turning that into a list allows us to change the size of the dictionary
-    for stream_name in list(records.keys()):
+    # reading the records from smallest to largest, and clearing the used ones from memory allows us to better avoid OOM issues when converting into parquet
+    for stream_name in sorted(records.keys(), key=lambda k: sys.getsizeof(records[k])):
         dataframe = pd.DataFrame(records[stream_name])
         del records[stream_name] # clear used data for better memory usage
         if streams_in_separate_folder and not os.path.exists(os.path.join(destination_path, stream_name)):
