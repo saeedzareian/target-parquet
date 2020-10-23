@@ -9,13 +9,25 @@ from jsonschema.validators import Draft4Validator
 import os
 import pandas as pd
 import pkg_resources
-import pyarrow
 import singer
 import sys
 import urllib
 import psutil
 import time
 import threading
+
+try:
+    import fastparquet as _fastparquet
+except ImportError:
+    _has_fastparquet = False
+else:
+    _has_fastparquet = True
+try:
+    import pyarrow as _pyarrow
+except ImportError:
+    _has_pyarrow = False
+else:
+    _has_pyarrow = True
 
 LOGGER = singer.get_logger()
 
@@ -26,6 +38,7 @@ def emit_state(state):
         LOGGER.debug('Emitting state {}'.format(line))
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
+
 
 class MemoryReporter(threading.Thread):
     '''Logs memory usage every 30 seconds'''
@@ -40,6 +53,7 @@ class MemoryReporter(threading.Thread):
                          self.process.memory_percent(),
                          self.process.memory_info())
             time.sleep(30.0)
+
 
 def flatten(dictionary, parent_key='', sep='__'):
     '''Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
@@ -76,22 +90,38 @@ def persist_messages(messages, destination_path, compression_method=None, stream
     state = None
     schemas = {}
     key_properties = {}
-    headers = {}
     validators = {}
     records = {}  # A list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
-    if compression_method:
-        # The target is prepared to accept all the compression methods provided by the pandas module, with the mapping below,
+    parquet_engine = ""
+
+    if _has_fastparquet:
+        parquet_engine = "fastparquet"
+        extension_mapping = {
+            'SNAPPY': '.snappy',
+            'GZIP': '.gz',
+            'BROTLI': '.br',
+            'ZSTD': '.zstd',
+            'LZO': '.lzo',
+            'LZ4': '.lz4'
+        }
+    elif _has_pyarrow:
+        parquet_engine = "pyarrow"
         extension_mapping = {
             'SNAPPY': '.snappy',
             'GZIP': '.gz',
             'BROTLI': '.br',
             'ZSTD': '.zstd'
-            #'LZ4': '.lz4', # should be supported by Pyarrow in the future, but has issues atm
-            ## Should de reintroduced when this fix arrives in the pip package: https://github.com/apache/arrow/issues/3491
+            # 'LZ4': '.lz4', # should be supported by Pyarrow in the future, but has issues atm
+            # Should de reintroduced when this fix arrives in the pip package: https://github.com/apache/arrow/issues/3491
         }
-        compression_extension = extension_mapping.get(compression_method.upper())
+    LOGGER.info(f"using {parquet_engine} parquet engine")
+    compression_extension = ""
+    if compression_method:
+        # The target is prepared to accept all the compression methods provided by the pandas module, with the mapping below,
+        compression_extension = extension_mapping.get(
+            compression_method.upper())
         if compression_extension is None:
-            LOGGER.warning("unsuported compression method.")
+            LOGGER.warning(f"unsuported compression method. The suppoerted method for the selected {parquet_engine} engine are : {', '.join([k for k in extension_mapping.keys()])}. If this was changed, please contact the developer.")
             compression_extension = ""
             compression_method = None
     filename_separator = "-"
@@ -99,7 +129,7 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         LOGGER.info("writing streams in separate folders")
         filename_separator = os.path.sep
     if not os.path.exists(destination_path):
-            os.makedirs(destination_path)
+        os.makedirs(destination_path)
 
     for message in messages:
         try:
@@ -120,7 +150,7 @@ def persist_messages(messages, destination_path, compression_method=None, stream
             # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
             if type(records.get(stream_name)) != list:
                 records[stream_name] = [flattened_record]
-            else: 
+            else:
                 records[stream_name].append(flattened_record)
             state = None
         elif message_type == 'STATE':
@@ -145,7 +175,7 @@ def persist_messages(messages, destination_path, compression_method=None, stream
             os.makedirs(os.path.join(destination_path, stream_name))
         filename = stream_name + filename_separator + timestamp + compression_extension + '.parquet'
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        dataframe.to_parquet(filepath, engine='pyarrow', compression=compression_method)
+        dataframe.to_parquet(filepath, engine=parquet_engine, compression=compression_method)
     return state
 
 
@@ -169,6 +199,9 @@ def send_usage_stats():
 
 
 def main():
+    if not _has_fastparquet and not _has_pyarrow:
+        LOGGER.fatal("both parquet engines (fastparquet and pyarrow) are missing or could not be imported. Check if they are installed, and their system dependecies are as well.")
+        return  # just in case LOGGER.fatal does not quit the program
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config', help='Config file')
 
@@ -187,7 +220,7 @@ def main():
     input_messages = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
     MemoryReporter().start()
     state = persist_messages(input_messages,
-                             config.get('destination_path', ''),
+                             config.get('destination_path', '.'),
                              config.get('compression_method'), config.get('streams_in_separate_folder', False))
 
     emit_state(state)
