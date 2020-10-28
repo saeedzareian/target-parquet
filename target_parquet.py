@@ -16,6 +16,7 @@ import psutil
 import time
 import sys
 import threading
+import ujson
 
 try:
     import fastparquet as _fastparquet
@@ -94,6 +95,7 @@ def persist_messages(messages, destination_path, compression_method=None, stream
     validators = {}
     records = {}  # A list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
     parquet_engine = ""
+    os.mkdir("tap-parquet-temp")
 
     if _has_fastparquet:
         parquet_engine = "fastparquet"
@@ -149,11 +151,12 @@ def persist_messages(messages, destination_path, compression_method=None, stream
             validators[message['stream']].validate(message['record'])
             flattened_record = flatten(message['record'])
             # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
-            if type(records.get(stream_name)) != list:
-                records[stream_name] = [flattened_record]
-            else:
-                records[stream_name].append(flattened_record)
+            f = open(os.path.join("tap-parquet-temp", f'{stream_name}.append_only.jsonl'), 'a')
+            records[stream_name] = f'./temp/{stream_name}.append_only.jsonl'
+            f.write(ujson.dumps(flattened_record) + "\n")
+            f.close()
             state = None
+
         elif message_type == 'STATE':
             LOGGER.debug('Setting state to {}'.format(message['value']))
             state = message['value']
@@ -170,10 +173,15 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         LOGGER.info("There were not any records retrieved.")
         return state
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
-    # reading the records from smallest to largest, and clearing the used ones from memory allows us to better avoid OOM issues when converting into parquet
-    for stream_name in sorted(records.keys(), key=lambda k: sys.getsizeof(records[k])):
-        dataframe = pd.DataFrame(records[stream_name])
-        del records[stream_name] # clear used data for better memory usage
+    for stream_name in records.keys():
+        
+        f = open(os.path.join("tap-parquet-temp", f'{stream_name}.append_only.jsonl'), 'r')
+        raw_stream = f.readlines()
+        f.close()
+        stream_data = []
+        for raw_line in raw_stream:
+            stream_data.append(ujson.loads(raw_line))
+        dataframe = pd.DataFrame(stream_data)
         if streams_in_separate_folder and not os.path.exists(os.path.join(destination_path, stream_name)):
             os.makedirs(os.path.join(destination_path, stream_name))
         filename = stream_name + filename_separator + timestamp + compression_extension + '.parquet'

@@ -14,6 +14,7 @@ setup(name='target-parquet',
           'singer-python==5.9.0',
           'pandas==1.1.3',
           'psutil==5.7.2',
+          'ujson==4.0.1',
       ],
       extras_require={
         'pyarrow': ['pyarrow==1.0.1'],
