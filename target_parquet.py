@@ -32,6 +32,7 @@ else:
     _has_pyarrow = True
 
 LOGGER = singer.get_logger()
+TEMP_FOLDER = "tap-parquet-temp"
 
 
 def emit_state(state):
@@ -88,14 +89,16 @@ def flatten(dictionary, parent_key='', sep='__'):
     return dict(items)
 
 
-def persist_messages(messages, destination_path, compression_method=None, streams_in_separate_folder=False):
+def persist_messages(messages, destination_path, compression_method=None, streams_in_separate_folder=False,keep_temporary_files=False):
+    TEMP_PATH_TEMPLATE = os.path.join(TEMP_FOLDER, '{}-{}.append_only.jsonl')
     state = None
     schemas = {}
     key_properties = {}
     validators = {}
     records = {}  # A list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
     parquet_engine = ""
-    os.mkdir("tap-parquet-temp")
+    if not os.path.exists(os.path.join(".", TEMP_FOLDER)):
+        os.mkdir(TEMP_FOLDER)
 
     if _has_fastparquet:
         parquet_engine = "fastparquet"
@@ -150,11 +153,15 @@ def persist_messages(messages, destination_path, compression_method=None, stream
             stream_name = message['stream']
             validators[message['stream']].validate(message['record'])
             flattened_record = flatten(message['record'])
-            # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
-            f = open(os.path.join("tap-parquet-temp", f'{stream_name}.append_only.jsonl'), 'a')
-            records[stream_name] = f'./temp/{stream_name}.append_only.jsonl'
-            f.write(ujson.dumps(flattened_record) + "\n")
-            f.close()
+            # Once the record is flattenned, it is added to the final record file, which will be stored in the parquet file.
+            if records.get(stream_name) is None:
+                try:
+                    records[stream_name] = open(TEMP_PATH_TEMPLATE.format(stream_name,timestamp), 'w+')
+                except Exception as err:
+                    LOGGER.fatal(f"Failed to create temporary file. Error: {err}")
+                    raise err
+            records[stream_name].write(ujson.dumps(flattened_record) + "\n")
+            # records[stream_name].flush() # TODO : is this necessary/helpfull ?
             state = None
 
         elif message_type == 'STATE':
@@ -174,10 +181,14 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         return state
     # Create a dataframe out of the record list and store it into a parquet file with the timestamp in the name.
     for stream_name in records.keys():
-        
-        f = open(os.path.join("tap-parquet-temp", f'{stream_name}.append_only.jsonl'), 'r')
-        raw_stream = f.readlines()
-        f.close()
+        records[stream_name].seek(0)
+        raw_stream = records[stream_name].readlines()
+        records[stream_name].close()
+        if not keep_temporary_files:
+            try:
+                os.remove(TEMP_PATH_TEMPLATE.format(stream_name,timestamp))
+            except Exception as err:
+                LOGGER.warning(f"failed to remote temp file: {err}")
         stream_data = []
         for raw_line in raw_stream:
             stream_data.append(ujson.loads(raw_line))
@@ -187,6 +198,11 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         filename = stream_name + filename_separator + timestamp + compression_extension + '.parquet'
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
         dataframe.to_parquet(filepath, engine=parquet_engine, compression=compression_method)
+    if not keep_temporary_files:
+        try:
+            os.removedirs(TEMP_FOLDER)
+        except Exception as err:
+            LOGGER.warning(f"failed to remote temp folder {err}")
     return state
 
 
@@ -232,7 +248,7 @@ def main():
     MemoryReporter().start()
     state = persist_messages(input_messages,
                              config.get('destination_path', '.'),
-                             config.get('compression_method'), config.get('streams_in_separate_folder', False))
+                             config.get('compression_method'), config.get('streams_in_separate_folder', False), config.get('keep_temporary_files', False))
 
     emit_state(state)
     LOGGER.debug("Exiting normally")
