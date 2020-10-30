@@ -186,7 +186,7 @@ def persist_messages(messages, destination_path, compression_method=None, stream
         records[stream_name].close()
         if not keep_temporary_files:
             try:
-                os.remove(TEMP_PATH_TEMPLATE.format(stream_name,timestamp))
+                os.remove(records[stream_name].name)
             except Exception as err:
                 LOGGER.warning(f"failed to remote temp file: {err}")
         stream_data = []
