@@ -19,7 +19,7 @@ setup(
     extras_require={
         'dev': [
             'pytest==6.2.4',
-            'pandas==1.2.4'
+            'pandas==1.4.1'
         ]
     },
     entry_points="""
