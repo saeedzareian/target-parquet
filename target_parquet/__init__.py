@@ -33,7 +33,8 @@ def create_dataframe(list_dict):
         fields = fields.union(d.keys())
     LOGGER.info(f"final list of fields: {fields}")
     try:
-        dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
+        #dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
+        dataframe = pd.DataFrame(list_dict, columns=fields)
     except Exception as e:
         LOGGER.info(f"exception for data frame: {e}")
         raiase
