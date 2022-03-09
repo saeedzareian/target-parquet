@@ -154,6 +154,7 @@ def persist_messages(
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.info(f"Writing files from {current_stream_name} stream")
         dataframe = create_dataframe(record)
+        LOGGER.info(f"data frame created");
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -166,12 +167,16 @@ def persist_messages(
             + ".parquet"
         )
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
+        LOGGER.info(f"filepath will be {filepath}");
         with open(filepath, 'wb') as f:
+            LOGGER.info(f"starting to write parquet file");
             ParquetWriter(f,
                         dataframe.schema,
                         compression=compression_method).write_table(dataframe)
+            LOGGER.info(f"wrote parquet");
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
+        LOGGER.info(f"returning the filepath {filepath}");
         return filepath
 
     def consumer(receiver):
