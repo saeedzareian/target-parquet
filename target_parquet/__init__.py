@@ -174,8 +174,8 @@ def persist_messages(
                 ParquetWriter(f,
                             dataframe.schema,
                             compression=compression_method).write_table(dataframe)
-                LOGGER.info(f"wrote parquet");
-             except Exception e:
+                LOGGER.info(f"wrote parquet for {filepath}");
+            except Exception as e:
                 LOGGER.info(f"exception: {e}");
                 raise
         ## explicit memory management. This can be usefull when working on very large data groups
