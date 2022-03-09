@@ -44,7 +44,7 @@ class MessageType(Enum):
 def emit_state(state):
     if state is not None:
         line = json.dumps(state)
-        LOGGER.debug("Emitting state {}".format(line))
+        LOGGER.info("Emitting state {}".format(line))
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
 
@@ -58,7 +58,7 @@ class MemoryReporter(threading.Thread):
 
     def run(self):
         while True:
-            LOGGER.debug(
+            LOGGER.info(
                 "Virtual memory usage: %.2f%% of total: %s",
                 self.process.memory_percent(),
                 self.process.memory_info(),
@@ -90,7 +90,7 @@ def persist_messages(
         }
         compression_extension = extension_mapping.get(compression_method.upper())
         if compression_extension is None:
-            LOGGER.warning("unsuported compression method.")
+            LOGGER.info("unsuported compression method.")
             compression_extension = ""
             compression_method = None
     filename_separator = "-"
@@ -108,7 +108,7 @@ def persist_messages(
         state = None
         try:
             for message in message_buffer:
-                LOGGER.debug(f"target-parquet got message: {message}")
+                LOGGER.info(f"target-parquet got message: {message}")
                 try:
                     message = singer.parse_message(message).asdict()
                 except json.decoder.JSONDecodeError:
@@ -129,17 +129,17 @@ def persist_messages(
                     w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
                 elif message_type == "STATE":
-                    LOGGER.debug("Setting state to {}".format(message["value"]))
+                    LOGGER.info("Setting state to {}".format(message["value"]))
                     state = message["value"]
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
                     validators[stream] = Draft4Validator(message["schema"])
                     schemas[stream] = flatten_schema(message["schema"]["properties"])
-                    LOGGER.debug(f"Schema: {schemas[stream]}")
+                    LOGGER.info(f"Schema: {schemas[stream]}")
                     key_properties[stream] = message["key_properties"]
                     w_queue.put((MessageType.SCHEMA, stream, schemas[stream]))
                 else:
-                    LOGGER.warning(
+                    LOGGER.info(
                         "Unknown message type {} in message {}".format(
                             message["type"], message
                         )
@@ -152,7 +152,7 @@ def persist_messages(
 
     def write_file(current_stream_name, record):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
-        LOGGER.debug(f"Writing files from {current_stream_name} stream")
+        LOGGER.info(f"Writing files from {current_stream_name} stream")
         dataframe = create_dataframe(record)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
@@ -217,7 +217,7 @@ def persist_messages(
                     )
                 )
                 LOGGER.info(f"Wrote {len(files_created)} files")
-                LOGGER.debug(f"Wrote {files_created} files")
+                LOGGER.info(f"Wrote {files_created} files")
                 break
 
     q = Queue()
@@ -247,7 +247,7 @@ def send_usage_stats():
         conn.getresponse()
         conn.close()
     except:
-        LOGGER.debug("Collection request failed")
+        LOGGER.info("Collection request failed")
 
 
 def main():
@@ -283,7 +283,7 @@ def main():
     )
 
     emit_state(state)
-    LOGGER.debug("Exiting normally")
+    LOGGER.info("Exiting normally")
 
 
 if __name__ == "__main__":
