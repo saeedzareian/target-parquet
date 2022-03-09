@@ -34,10 +34,11 @@ def create_dataframe(list_dict):
     LOGGER.info(f"final list of fields: {fields}")
     try:
         #dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
-        dataframe = pd.DataFrame(list_dict, columns=fields)
+        #dataframe = pa.DataFrame(list_dict, columns=fields)
+        dataframe = pa.Table.from_pylist(list_dict)
     except Exception as e:
         LOGGER.info(f"exception for data frame: {e}")
-        raiase
+        raise
     return dataframe
 
 
