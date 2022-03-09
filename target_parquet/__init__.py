@@ -170,10 +170,14 @@ def persist_messages(
         LOGGER.info(f"filepath will be {filepath}");
         with open(filepath, 'wb') as f:
             LOGGER.info(f"starting to write parquet file");
-            ParquetWriter(f,
-                        dataframe.schema,
-                        compression=compression_method).write_table(dataframe)
-            LOGGER.info(f"wrote parquet");
+            try:
+                ParquetWriter(f,
+                            dataframe.schema,
+                            compression=compression_method).write_table(dataframe)
+                LOGGER.info(f"wrote parquet");
+             except Exception e:
+                LOGGER.info(f"exception: {e}");
+                raise
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
         LOGGER.info(f"returning the filepath {filepath}");
