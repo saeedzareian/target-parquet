@@ -153,6 +153,7 @@ def persist_messages(
             return state
         except Exception as Err:
             w_queue.put((MessageType.EOF, _break_object, None))
+            LOGGER.info(f"exception in processing {Err}")
             raise Err
 
     def write_file(current_stream_name, record):
@@ -235,13 +236,14 @@ def persist_messages(
                 break
 
     q = Queue()
-    t2 = Process(
-        target=consumer,
-        args=(q,),
-    )
-    t2.start()
+    #t2 = Process(
+    #    target=consumer,
+    #    args=(q,),
+    #)
+    #t2.start()
     state = producer(messages, q)
-    t2.join()
+    consumer(q)
+    # t2.join()
     return state
 
 
@@ -286,7 +288,7 @@ def main():
         threading.Thread(target=send_usage_stats).start()
     # The target expects that the tap generates UTF-8 encoded text.
     input_messages = TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
-    if LOGGER.level == 0:
+    if true or LOGGER.level == 0:
         MemoryReporter().start()
     state = persist_messages(
         input_messages,
