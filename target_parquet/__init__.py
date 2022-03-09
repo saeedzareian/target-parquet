@@ -288,7 +288,7 @@ def main():
         threading.Thread(target=send_usage_stats).start()
     # The target expects that the tap generates UTF-8 encoded text.
     input_messages = TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
-    if true or LOGGER.level == 0:
+    if True or LOGGER.level == 0:
         MemoryReporter().start()
     state = persist_messages(
         input_messages,
