@@ -31,7 +31,8 @@ def create_dataframe(list_dict):
     fields = set()
     for d in list_dict:
         fields = fields.union(d.keys())
-    dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields})
+    LOGGER.info(f"final list of fields: {fields}")
+    dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
     return dataframe
 
 
