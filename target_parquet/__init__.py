@@ -34,12 +34,12 @@ def extract_field_names(list_dict):
     LOGGER.info(f"final list of fields: {fields}")
     return fields
 
-def create_dataframe(list_dict, fields, create_dataframe):
+def create_dataframe(list_dict, fields, dataframe_schema):
     try:
-        if not create_dataframe:
+        if dataframe_schema is not None:
             dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
         else: 
-            dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields}, schema=create_dataframe)
+            dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields}, schema=dataframe_schema)
        # dataframe = pa.Table.from_pylist(list_dict)
     except Exception as e:
         LOGGER.info(f"exception for data frame: {e}")
@@ -164,7 +164,7 @@ def persist_messages(
             raise Err
 
     def write_file(current_stream_name, record):
-        batch_size = 10000
+        batch_size = 15000
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.info(f"Writing files from {current_stream_name} stream")
         fields = extract_field_names(record)
