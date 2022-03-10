@@ -5,6 +5,7 @@ except ImportError:
 
 import singer
 import os
+import json
 
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
