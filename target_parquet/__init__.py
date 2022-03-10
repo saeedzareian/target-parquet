@@ -27,15 +27,17 @@ _all__ = ["main"]
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
-def create_dataframe(list_dict):
+def extract_field_names(list_dict):
     fields = set()
     for d in list_dict:
         fields = fields.union(d.keys())
     LOGGER.info(f"final list of fields: {fields}")
+    return fields
+
+def create_dataframe(list_dict, fields):
     try:
-        #dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
-        #dataframe = pa.DataFrame(list_dict, columns=fields)
-        dataframe = pa.Table.from_pylist(list_dict)
+        dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
+       # dataframe = pa.Table.from_pylist(list_dict)
     except Exception as e:
         LOGGER.info(f"exception for data frame: {e}")
         raise
@@ -159,10 +161,12 @@ def persist_messages(
             raise Err
 
     def write_file(current_stream_name, record):
+        batch_size = 10000
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.info(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(record)
-        LOGGER.info(f"data frame created");
+        fields = extract_field_names(record)
+        LOGGER.info(f"data frame created")
+        
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -171,21 +175,23 @@ def persist_messages(
             current_stream_name
             + filename_separator
             + timestamp
-            + compression_extension
-            + ".parquet"
         )
+     
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        LOGGER.info(f"filepath will be {filepath}");
-        with open(filepath, 'wb') as f:
-            LOGGER.info(f"starting to write parquet file");
-            try:
-                ParquetWriter(f,
-                            dataframe.schema,
-                            compression=compression_method).write_table(dataframe)
-                LOGGER.info(f"wrote parquet for {filepath}");
-            except Exception as e:
-                LOGGER.info(f"exception: {e}");
-                raise
+        LOGGER.info(f"filepath will be {filepath}")
+        for row_number in range(0, len(record), batch_size):
+            file_part = filepath + "." + str(row_number)+ ".parquet"+ compression_extension
+            with open(file_part, 'wb') as f:
+                LOGGER.info(f"starting to write parquet file {filepath}");
+                try:
+                    dataframe = create_dataframe(record[row_number:row_number+batchsize], fields)
+                    ParquetWriter(f,
+                                dataframe.schema,
+                                compression=compression_method).write_table(dataframe)
+                    LOGGER.info(f"wrote parquet for {file_part}");
+                except Exception as e:
+                    LOGGER.info(f"exception: {e}");
+                    raise
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
         LOGGER.info(f"returning the filepath {filepath}");
