@@ -36,7 +36,7 @@ def flatten(dictionary, parent_key="", sep="__"):
         if isinstance(v, MutableMapping):
             items.extend(flatten(v, new_key, sep=sep).items())
         else:
-            items.append((new_key, str(v) if type(v) is list else v))
+            items.append((new_key, json.dumps(v) if type(v) is list else v))
     return dict(items)
 
 def flatten_schema(dictionary, parent_key="", sep="__"):
