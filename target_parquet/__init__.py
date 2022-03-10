@@ -184,7 +184,7 @@ def persist_messages(
             with open(file_part, 'wb') as f:
                 LOGGER.info(f"starting to write parquet file {filepath}");
                 try:
-                    dataframe = create_dataframe(record[row_number:row_number+batchsize], fields)
+                    dataframe = create_dataframe(record[row_number:row_number+batch_size], fields)
                     ParquetWriter(f,
                                 dataframe.schema,
                                 compression=compression_method).write_table(dataframe)
