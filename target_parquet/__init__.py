@@ -164,7 +164,7 @@ def persist_messages(
             raise Err
 
     def write_file(current_stream_name, record):
-        batch_size = 14000
+        batch_size = 15000
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.info(f"Writing files from {current_stream_name} stream")
         fields = extract_field_names(record)
@@ -196,11 +196,12 @@ def persist_messages(
                                 dataframe_schema,
                                 compression=compression_method).write_table(dataframe)
                     LOGGER.info(f"wrote parquet for {file_part}");
+                    ## explicit memory management. This can be usefull when working on very large data groups
+                    del dataframe
                 except Exception as e:
                     LOGGER.info(f"exception: {e}");
                     raise
-        ## explicit memory management. This can be usefull when working on very large data groups
-        del dataframe
+
         LOGGER.info(f"returning the filepath {filepath}");
         return filepath
 
