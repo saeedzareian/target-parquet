@@ -43,6 +43,7 @@ def flatten(dictionary, parent_key="", sep="__"):
     # fixing the Decimal parsing issue
     for k, v in all.items():
         if type(v) is Decimal:
+            print("changed the "+v+ " to "+ str(v))
             all[k] = str(v)
     return all
 
