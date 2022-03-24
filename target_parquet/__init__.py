@@ -4,7 +4,7 @@ from datetime import datetime
 from io import TextIOWrapper
 import http.client
 import simplejson as json
-from jsonschema.validators import Draft4Validator
+from jsonschema.validators import Draft7Validator
 import os
 import pkg_resources
 import pyarrow as pa
