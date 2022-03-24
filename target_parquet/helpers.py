@@ -3,6 +3,7 @@ try:
 except ImportError:
     from collections import MutableMapping  # deprecated in Python 3.3
 
+from decimal import Decimal
 import singer
 import os
 import simplejson
@@ -37,8 +38,13 @@ def flatten(dictionary, parent_key="", sep="__"):
         if isinstance(v, MutableMapping):
             items.extend(flatten(v, new_key, sep=sep).items())
         else:
-            items.append((new_key, simplejson.dumps(v, use_decimal=False) if type(v) is list else v))
-    return dict(items)
+            items.append((new_key, simplejson.dumps(v, use_decimal=True) if type(v) is list else v))
+    all = dict(items)
+    # fixing the Decimal parsing issue
+    for k, v in all.items():
+        if type(v) is Decimal:
+            all[k] = str(v)
+    return all
 
 def flatten_schema(dictionary, parent_key="", sep="__"):
     """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
