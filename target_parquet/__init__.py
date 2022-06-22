@@ -39,6 +39,10 @@ def create_dataframe(list_dict, fields, dataframe_schema):
     try:
         if dataframe_schema is None:
             dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
+            for i in range(len(fields)):
+                new_field_with_nullable = dataframe.schema.field(i).with_nullable(true)
+                dataframe.schema.set(i, new_field_with_nullable)
+            dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields}, schema=dataframe.schema)
         else: 
             dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields}, schema=dataframe_schema)
        # dataframe = pa.Table.from_pylist(list_dict)
