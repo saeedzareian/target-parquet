@@ -37,7 +37,7 @@ def extract_field_names(list_dict):
 
 def create_dataframe(list_dict, fields, dataframe_schema):
     try:
-        if dataframe_schema is not None:
+        if dataframe_schema is None:
             dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
         else: 
             dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields}, schema=dataframe_schema)
