@@ -190,7 +190,7 @@ def persist_messages(
         LOGGER.info(f"filepath will be {filepath}")
         dataframe_schema = None
         # random.shuffle(record)
-        for row_number in reversed(range(0, len(record), batch_size)):
+        for row_number in range(0, len(record), batch_size):
             file_part = filepath + "." + str(row_number)+ ".parquet"+ compression_extension
             with open(file_part, 'wb') as f:
                 LOGGER.info(f"starting to write parquet file {filepath}");
