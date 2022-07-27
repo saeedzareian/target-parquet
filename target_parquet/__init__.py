@@ -248,15 +248,20 @@ def persist_messages(
             elif message_type == MessageType.SCHEMA:
                 schemas[stream_name] = record
             elif message_type == MessageType.EOF:
-                files_created.append(
-                    write_file(
-                        current_stream_name,
-                        records.pop(current_stream_name)
+                try:
+                    files_created.append(
+                        write_file(
+                            current_stream_name,
+                            records.pop(current_stream_name)
+                        )
                     )
-                )
-                LOGGER.info(f"Wrote {len(files_created)} files")
-                LOGGER.info(f"Wrote {files_created} files")
-                break
+                    LOGGER.info(f"Wrote {len(files_created)} files")
+                    LOGGER.info(f"Wrote {files_created} files")
+                    break
+                except Exception as Err:
+                    LOGGER.error(f"exception in processing {Err}")
+                    raise Err
+                    
 
     q = Queue()
     #t2 = Process(
