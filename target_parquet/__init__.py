@@ -249,6 +249,9 @@ def persist_messages(
                 schemas[stream_name] = record
             elif message_type == MessageType.EOF:
                 try:
+                    LOGGER.info(f"Writing {current_stream_name} files")
+                    LOGGER.info(f"Writing {records.pop(current_stream_name)} files")
+                    
                     files_created.append(
                         write_file(
                             current_stream_name,
