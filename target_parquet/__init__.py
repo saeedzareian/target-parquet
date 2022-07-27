@@ -272,19 +272,20 @@ def persist_messages(
 
 def send_usage_stats():
     try:
-        version = pkg_resources.get_distribution("target-parquet").version
-        conn = http.client.HTTPConnection("collector.singer.io", timeout=10)
-        conn.connect()
-        params = {
-            "e": "se",
-            "aid": "singer",
-            "se_ca": "target-parquet",
-            "se_ac": "open",
-            "se_la": version,
-        }
-        conn.request("GET", "/i?" + urllib.parse.urlencode(params))
-        conn.getresponse()
-        conn.close()
+        pass
+         # version = pkg_resources.get_distribution("target-parquet").version
+        #conn = http.client.HTTPConnection("collector.singer.io", timeout=10)
+        # conn.connect()
+        # params = {
+        #    "e": "se",
+        #    "aid": "singer",
+        #    "se_ca": "target-parquet",
+        #    "se_ac": "open",
+        #    "se_la": version,
+        # }
+        # conn.request("GET", "/i?" + urllib.parse.urlencode(params))
+        # conn.getresponse()
+        # conn.close()
     except:
         LOGGER.info("Collection request failed")
 
