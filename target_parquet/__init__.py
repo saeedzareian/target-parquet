@@ -259,7 +259,7 @@ def persist_messages(
                     LOGGER.info(f"Wrote {files_created} files")
                     break
                 except Exception as Err:
-                    LOGGER.error(f"exception in processing {Err}")
+                    LOGGER.error(Err)
                     raise Err
                     
 
