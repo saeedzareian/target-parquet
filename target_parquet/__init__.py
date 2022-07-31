@@ -178,7 +178,7 @@ def persist_messages(
 
     def write_file(current_stream_name, record):
         
-        batch_size = 9704
+        batch_size = 10704
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.info(f"Writing files from {current_stream_name} stream")
         fields = extract_field_names(record)
@@ -202,20 +202,9 @@ def persist_messages(
         for row_number in range(0, len(record), batch_size):
              schema = get_schema(record[row_number:row_number+batch_size], fields)
              batches_schema.append(schema)
-             LOGGER.info(f"get_schema: {schema}")
+             # LOGGER.info(f"get_schema: {schema}")
         schema = pa.unify_schemas(batches_schema)
-        
-        #    
-        #    for f in schema:
-        #        if f.type.is_null():
-        #            LOGGER.info(f"field {f} is null")
-        #    LOGGER.info(f"schema: {dataframe.schema.types}")
-        # ASSUMPTION: ALL SCHEMAS HAVE THE SAME NUMBER OF FIELDS BECAUSE WE LOOP THROUGH FIELDS
-        #for field in batches_schema[0]:
-        #    for i in range(1, len(batches_schema)):
-        #        batches_schema[i].schema.field
-            
-                    
+             
         LOGGER.info(f"filepath will be {filepath}")
         for row_number in range(0, len(record), batch_size):
             file_part = filepath + "." + str(row_number)+ ".parquet"+ compression_extension
@@ -277,7 +266,7 @@ def persist_messages(
             elif message_type == MessageType.EOF:
                 try:
                     LOGGER.info(f"Writing {current_stream_name} files")
-                    LOGGER.info(f"Writing {records.pop(current_stream_name)} files")
+                    # LOGGER.info(f"Writing {records.pop(current_stream_name)} files")
                     
                     files_created.append(
                         write_file(
