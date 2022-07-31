@@ -52,6 +52,9 @@ def create_dataframe(list_dict, fields, dataframe_schema):
     return dataframe
 
 def get_schema(dataframe):
+    for f in dataframe.schema:
+        if f.is_null():
+            LOGGER.info(f"field {f} is null")
     LOGGER.info(f"schema: {dataframe.schema.types}")
 
 
