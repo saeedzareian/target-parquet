@@ -54,7 +54,6 @@ def create_dataframe(list_dict, fields, dataframe_schema):
 def get_schema(list_dict, fields):
     try:
        dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
-            
        # dataframe = pa.Table.from_pylist(list_dict)
     except Exception as e:
         LOGGER.info(f"exception for schema: {e}")
@@ -201,27 +200,34 @@ def persist_messages(
         
         batches_schema = []
         for row_number in range(0, len(record), batch_size):
-            schema = get_schema(record[row_number:row_number+batch_size], fields)
-            batches_schema.append(schema)
-            LOGGER.info(f"get_schema {schema}")
+             schema = get_schema(record[row_number:row_number+batch_size], fields)
+             batches_schema.append(schema)
+             LOGGER.info(f"get_schema: {schema}")
+        schema = unify_schemas(batches_schema)
+        
+        #    
+        #    for f in schema:
+        #        if f.type.is_null():
+        #            LOGGER.info(f"field {f} is null")
+        #    LOGGER.info(f"schema: {dataframe.schema.types}")
+        # ASSUMPTION: ALL SCHEMAS HAVE THE SAME NUMBER OF FIELDS BECAUSE WE LOOP THROUGH FIELDS
+        #for field in batches_schema[0]:
+        #    for i in range(1, len(batches_schema)):
+        #        batches_schema[i].schema.field
             
-            for f in schema:
-                if f.type.is_null():
-                    LOGGER.info(f"field {f} is null")
-            LOGGER.info(f"schema: {dataframe.schema.types}")
-            
+                    
         LOGGER.info(f"filepath will be {filepath}")
         for row_number in range(0, len(record), batch_size):
             file_part = filepath + "." + str(row_number)+ ".parquet"+ compression_extension
             with open(file_part, 'wb') as f:
                 LOGGER.info(f"starting to write parquet file {filepath}");
                 try:
-                    dataframe = create_dataframe(record[row_number:row_number+batch_size], fields, dataframe_schema)
+                    dataframe = create_dataframe(record[row_number:row_number+batch_size], fields, schema)
                     # using the same schema for all of the files
-                    if dataframe_schema is None:
-                        dataframe_schema = dataframe.schema;
+                    # if schema is None:
+                        # schema = dataframe.schema;
                     ParquetWriter(f,
-                                dataframe_schema,
+                                schema,
                                 compression=compression_method).write_table(dataframe)
                     LOGGER.info(f"wrote parquet for {file_part}");
                     ## explicit memory management. This can be usefull when working on very large data groups
