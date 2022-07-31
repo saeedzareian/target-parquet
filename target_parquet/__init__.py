@@ -51,6 +51,9 @@ def create_dataframe(list_dict, fields, dataframe_schema):
         raise
     return dataframe
 
+def get_schema(dataframe):
+    LOGGER.info(f"schema: {dataframe.schema.types}")
+
 
 class MessageType(Enum):
     RECORD = 1
@@ -196,6 +199,7 @@ def persist_messages(
                 LOGGER.info(f"starting to write parquet file {filepath}");
                 try:
                     dataframe = create_dataframe(record[row_number:row_number+batch_size], fields, dataframe_schema)
+                    get_schema(dataframe)
                     # using the same schema for all of the files
                     if dataframe_schema is None:
                         dataframe_schema = dataframe.schema;
