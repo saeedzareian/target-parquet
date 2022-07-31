@@ -203,7 +203,7 @@ def persist_messages(
              schema = get_schema(record[row_number:row_number+batch_size], fields)
              batches_schema.append(schema)
              LOGGER.info(f"get_schema: {schema}")
-        schema = unify_schemas(batches_schema)
+        schema = pa.unify_schemas(batches_schema)
         
         #    
         #    for f in schema:
