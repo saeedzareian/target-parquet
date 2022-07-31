@@ -51,12 +51,15 @@ def create_dataframe(list_dict, fields, dataframe_schema):
         raise
     return dataframe
 
-def get_schema(dataframe):
-    for f in dataframe.schema:
-        if f.is_null():
-            LOGGER.info(f"field {f} is null")
-    LOGGER.info(f"schema: {dataframe.schema.types}")
-
+def get_schema(list_dict, fields):
+    try:
+       dataframe = pa.table({f: [row.get(f, None) for row in list_dict] for f in fields})
+            
+       # dataframe = pa.Table.from_pylist(list_dict)
+    except Exception as e:
+        LOGGER.info(f"exception for schema: {e}")
+        raise
+    return dataframe.schema
 
 class MessageType(Enum):
     RECORD = 1
@@ -193,16 +196,27 @@ def persist_messages(
         )
      
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        LOGGER.info(f"filepath will be {filepath}")
         dataframe_schema = None
         # random.shuffle(record)
+        
+        batches_schema = []
+        for row_number in range(0, len(record), batch_size):
+            schema = get_schema(record[row_number:row_number+batch_size], fields)
+            batches_schema.append(schema)
+            LOGGER.info(f"get_schema {schema}")
+            
+            for f in schema:
+                if f.type.is_null():
+                    LOGGER.info(f"field {f} is null")
+            LOGGER.info(f"schema: {dataframe.schema.types}")
+            
+        LOGGER.info(f"filepath will be {filepath}")
         for row_number in range(0, len(record), batch_size):
             file_part = filepath + "." + str(row_number)+ ".parquet"+ compression_extension
             with open(file_part, 'wb') as f:
                 LOGGER.info(f"starting to write parquet file {filepath}");
                 try:
                     dataframe = create_dataframe(record[row_number:row_number+batch_size], fields, dataframe_schema)
-                    get_schema(dataframe)
                     # using the same schema for all of the files
                     if dataframe_schema is None:
                         dataframe_schema = dataframe.schema;
